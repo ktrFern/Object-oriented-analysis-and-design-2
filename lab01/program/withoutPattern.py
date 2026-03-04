@@ -196,7 +196,7 @@ class ShopApp(QMainWindow):
                          ("Cat", 400, "cat.png")]
 
         self.cart = []
-        self.current_region = "🇩🇪"
+        self.current_region = "DE"
         self.order_service = OrderService(self.current_region)
         self.init_ui()
         self.update_catalog()
@@ -336,4 +336,5 @@ class ShopApp(QMainWindow):
 if __name__ == "__main__":
     app = QApplication(sys.argv)
     ShopApp().show()
+
     sys.exit(app.exec())
