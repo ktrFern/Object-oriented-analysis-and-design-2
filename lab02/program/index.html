@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>PhotoLab — Фасад</title>
+    <style>
+        :root {
+            --bg: #0f0f14;
+            --panel: #1a1a24;
+            --accent: #7c5cff;
+            --text: #e0e0ff;
+            --border: #2a2a3a
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0
+        }
+
+        body {
+            background: var(--bg);
+            color: var(--text);
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            line-height: 1.5
+        }
+
+        .app {
+            display: grid;
+            grid-template-columns: 240px 1fr 280px;
+            gap: 1rem;
+            max-width: 1400px;
+            margin: auto;
+            padding: 1rem
+        }
+
+        .panel {
+            background: var(--panel);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 1.2rem
+        }
+
+        h3 {
+            font-size: 0.9rem;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            color: #888;
+            margin-bottom: 1rem
+        }
+
+        .btn {
+            width: 100%;
+            padding: 0.7rem;
+            margin: 0.3rem 0;
+            background: #252535;
+            border: 1px solid var(--border);
+            color: var(--text);
+            border-radius: 8px;
+            cursor: pointer;
+            text-align: left;
+            transition: 0.2s;
+            font-size: 0.9rem
+        }
+
+            .btn:hover {
+                border-color: var(--accent);
+                background: #2a2a40
+            }
+
+        .preview {
+            min-height: 400px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 2px dashed var(--border);
+            border-radius: 8px;
+            background: #15151f;
+            overflow: hidden;
+            position: relative
+        }
+
+            .preview img {
+                max-width: 100%;
+                max-height: 100%;
+                object-fit: contain;
+                display: block
+            }
+
+            .preview .placeholder {
+                color: #666;
+                text-align: center;
+                padding: 2rem
+            }
+
+        .progress {
+            height: 4px;
+            background: var(--border);
+            border-radius: 2px;
+            overflow: hidden;
+            margin: 0.5rem 0
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--accent), #a890ff);
+            width: 0%;
+            transition: width 0.3s
+        }
+
+        .log {
+            font-family: monospace;
+            font-size: 0.75rem;
+            max-height: 400px;
+            overflow-y: auto;
+            color: #aaa
+        }
+
+            .log div {
+                padding: 0.15rem 0;
+                border-bottom: 1px solid #222
+            }
+
+            .log .ok {
+                color: #6f6
+            }
+
+            .log .err {
+                color: #f66
+            }
+
+        .filter-chip {
+            display: inline-block;
+            padding: 0.2rem 0.5rem;
+            margin: 0.1rem;
+            background: #252535;
+            border-radius: 4px;
+            font-size: 0.7rem;
+            cursor: pointer
+        }
+
+            .filter-chip:hover {
+                background: #3a3a50
+            }
+
+        .status-badge {
+            display: inline-block;
+            padding: 0.2rem 0.6rem;
+            background: #252535;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            margin-top: 0.5rem
+        }
+
+            .status-badge.active {
+                background: #2d5016;
+                color: #6f6
+            }
+
+        #filterStatus {
+            margin: 0 0 0.5rem 0;
+            min-height: 1.5rem;
+        }
+    </style>
+
+</head>
+<body>
+    <div class="app">
+        <div class="panel">
+            <h3>📁 Файл</h3>
+            <button class="btn" onclick="loadDemo()">🎨 Демо-изображение</button>
+            <input type="file" id="filePicker" accept=".bmp" style="display:none">
+            <button class="btn" onclick="openFilePicker()">📁 Выбрать файл...</button>
+
+            <h3 style="margin-top:1.5rem">✨ Пресеты</h3>
+            <button class="btn" onclick="preset('web_ready')">🌐 Для веба</button>
+            <button class="btn" onclick="preset('instagram')">📷 Instagram</button>
+            <button class="btn" onclick="preset('bw_artistic')">⚫ Ч/Б арт</button>
+
+            <h3 style="margin-top:1.5rem">🔧 Фильтры</h3>
+            <div id="filters"></div>
+        </div>
+
+        <div class="panel">
+            <h3>🖼️ Предпросмотр</h3>
+            <div class="preview" id="preview"><div class="placeholder">Загрузите изображение</div></div>
+            <div class="progress" id="progress" style="display:none"><div class="progress-fill" id="progressFill"></div></div>
+            <div style="margin-top:1rem; display:flex; gap:0.5rem">
+                <button class="btn" onclick="saveImage()" style="flex:1">💾 Сохранить</button>
+                <button class="btn" onclick="resetImage()" style="flex:1">↺ Сбросить всё</button>
+            </div>
+        </div>
+
+        <div class="panel">
+            <div id="filterStatus"></div>
+            <h3>📋 Журнал</h3>
+            <div class="log" id="log"></div>
+        </div>
+    </div>
+
+    <script>
+        const API = 'http://localhost:3000';
+        let currentImage = null, filtersApplied = 0;
+
+        const log = (msg, type = 'info') => {
+        const el = document.getElementById('log'), t = new Date().toLocaleTimeString();
+        const cls = type === 'ok' ? 'ok' : type === 'err' ? 'err' : '';
+        el.innerHTML = '<div class="' + cls + '">[' + t + '] ' + msg + '</div>' + el.innerHTML;
+        };
+
+        const showProgress = p => {
+        const bar = document.getElementById('progress'), fill = document.getElementById('progressFill');
+        bar.style.display = p > 0 ? 'block' : 'none';
+        fill.style.width = (p * 100) + '%';
+        };
+
+        const updateFilterStatus = () => {
+        const el = document.getElementById('filterStatus');
+        el.innerHTML = filtersApplied > 0
+        ? '<div class="status-badge active">✓ Фильтров: ' + filtersApplied + '</div>'
+        : '';
+        };
+
+        const apiCall = async (endpoint, body = null, isBinary = false) => {
+        showProgress(0.3);
+        const cfg = {
+        method: 'POST',
+        headers: { 'Content-Type': isBinary ? 'application/octet-stream' : 'application/json' },
+        body: isBinary ? body : (body ? JSON.stringify(body) : undefined)
+        };
+        try {
+        const r = await fetch(API + endpoint, cfg);
+        return await r.json();
+        } catch (e) {
+        log('✗ ' + e.message, 'err');
+        return { ok: false, error: e.message };
+        } finally {
+        showProgress(1);
+        }
+        };
+
+        const renderPreview = () => {
+        if (!currentImage?.info) {
+        document.getElementById('preview').innerHTML = '<div class="placeholder">Загрузите изображение</div>';
+        return;
+        }
+        const prev = document.getElementById('preview');
+        prev.innerHTML = '';
+        const img = document.createElement('img');
+        img.src = API + '/preview?t=' + Date.now();
+
+        img.onload = () => log('✓ Превью обновлено', 'ok');
+        img.onerror = () => {
+        log('⚠ Не удалось загрузить превью', 'err');
+        prev.innerHTML = '<div class="placeholder">🖼️ ' + currentImage.info.width + '×' + currentImage.info.height +
+        ' px' + (filtersApplied > 0 ? '<br><small style="color:#7c5cff">Фильтров: ' + filtersApplied + '</small>' : '') + '</div>';
+        };
+        prev.appendChild(img);
+        };
+
+        const loadDemo = async () => {
+        log('Загрузка демо...');
+        const res = await apiCall('/load', 'demo.bmp');
+        if (res.ok) {
+        currentImage = res;
+        filtersApplied = 0;
+        updateFilterStatus();
+        renderPreview();
+        log('✓ Демо загружено', 'ok');
+        } else log('✗ ' + res.error, 'err');
+        };
+
+        const openFilePicker = () => document.getElementById('filePicker').click();
+
+        document.getElementById('filePicker').addEventListener('change', async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        log('Загрузка: ' + file.name);
+        const res = await apiCall('/upload', file, true);
+        if (res.ok) {
+        currentImage = res;
+        filtersApplied = 0;
+        updateFilterStatus();
+        renderPreview();
+        log('✓ ' + file.name, 'ok');
+        } else log('✗ ' + res.error, 'err');
+        e.target.value = '';
+        });
+
+        const preset = async (name) => {
+        if (!currentImage) return log('Загрузите изображение', 'err');
+        log('Пресет: ' + name);
+        const res = await apiCall('/preset', { preset: name });
+        if (res.ok) {
+        filtersApplied = res.filters;
+        updateFilterStatus();
+        log('✓ Пресет применён', 'ok');
+        renderPreview();
+        } else log('✗ ' + res.error, 'err');
+        };
+
+        const saveImage = async () => {
+        if (!currentImage) return log('Нечего сохранять', 'err');
+        log('Сохранение...');
+        const res = await apiCall('/save');
+        if (res.ok) log('✓ ' + res.path, 'ok');
+        else log('✗ Ошибка', 'err');
+        };
+
+        const resetImage = async () => {
+        if (!currentImage) return log('Нет изображения', 'err');
+        log('Сброс к исходному...');
+        const res = await apiCall('/reset');
+        if (res.ok) {
+        filtersApplied = 0;
+        updateFilterStatus();
+        renderPreview();
+        log('✓ Изображение сброшено', 'ok');
+        } else log('✗ Ошибка', 'err');
+        };
+
+        const loadFilters = async () => {
+        try {
+        const res = await fetch(API + '/filters');
+        const data = await res.json();
+        document.getElementById('filters').innerHTML =
+        data.map(f => '<span class="filter-chip" onclick="applyFilter(\'' + f + '\')">' + f + '</span>').join('');
+        } catch (e) {
+        log('Ошибка загрузки фильтров', 'err');
+        }
+        };
+
+        const applyFilter = async (name) => {
+        if (!currentImage) return log('Загрузите изображение', 'err');
+        log('Фильтр: ' + name);
+        const res = await apiCall('/filter', { name });
+        if (res.ok) {
+        filtersApplied = res.filters;
+        updateFilterStatus();
+        log('✓ Применён', 'ok');
+        renderPreview();
+        } else log('✗ Ошибка', 'err');
+        };
+
+        loadFilters();
+        log('PhotoLab готов', 'ok');
+    </script>
+
+</body>
+</html>
