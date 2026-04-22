@@ -1,0 +1,6 @@
+D:\Uni\TSU\OOAP2\lab3\bin\Debug\BankTerminal.exe
+D:\Uni\TSU\OOAP2\lab3\bin\Debug\BankTerminal.pdb
+D:\Uni\TSU\OOAP2\lab3\obj\Debug\BankTerminal.csproj.AssemblyReference.cache
+D:\Uni\TSU\OOAP2\lab3\obj\Debug\BankTerminal.csproj.CoreCompileInputs.cache
+D:\Uni\TSU\OOAP2\lab3\obj\Debug\BankTerminal.exe
+D:\Uni\TSU\OOAP2\lab3\obj\Debug\BankTerminal.pdb
